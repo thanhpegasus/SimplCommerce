@@ -1,15 +1,16 @@
-﻿using SimplCommerce.Module.Core.Models;
+﻿using System.Threading.Tasks;
+using SimplCommerce.Module.Core.Models;
 
 namespace SimplCommerce.Module.Vendors.Services
 {
     public interface IVendorService
     {
-        void Create(Vendor brand);
+        Task Create(Vendor brand);
 
-        void Update(Vendor brand);
+        Task Update(Vendor brand);
 
-        void Delete(long id);
+        Task Delete(long id);
 
-        void Delete(Vendor brand);
+        Task Delete(Vendor brand);
     }
 }

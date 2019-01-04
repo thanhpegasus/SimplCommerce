@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using Microsoft.EntityFrameworkCore;
 using SimplCommerce.Infrastructure.Data;
 using SimplCommerce.Module.Core.Models;
 
@@ -17,9 +16,9 @@ namespace SimplCommerce.Module.Core.Services
 
         public IQueryable<WidgetInstance> GetPublished()
         {
-            return _widgetInstanceRepository.Query().Include(x => x.Widget).Where(x =>
-                x.PublishStart.HasValue && x.PublishStart.Value < DateTimeOffset.Now
-                && (!x.PublishEnd.HasValue || x.PublishEnd.Value > DateTimeOffset.Now));
+            return _widgetInstanceRepository.Query().Where(x =>
+                x.PublishStart.HasValue && x.PublishStart < DateTimeOffset.Now
+                && (!x.PublishEnd.HasValue || x.PublishEnd > DateTimeOffset.Now));
         }
     }
 }

@@ -10,6 +10,7 @@
         'ui.bootstrap.datetimepicker',
         'ui.tree',
         'summernote',
+        'colorpicker.module',
         'simplAdmin.common',
         'simplAdmin.dashboard',
         'simplAdmin.core',
@@ -18,10 +19,23 @@
         'simplAdmin.cms',
         'simplAdmin.search',
         'simplAdmin.reviews',
+        'simplAdmin.comments',
         'simplAdmin.activityLog',
         'simplAdmin.vendors',
         'simplAdmin.localization',
-        'simplAdmin.news'
+        'simplAdmin.news',
+        'simplAdmin.contacts',
+        'simplAdmin.pricing',
+        'simplAdmin.tax',
+        'simplAdmin.shippings',
+        'simplAdmin.shipping-tablerate',
+        'simplAdmin.payments',
+        'simplAdmin.paymentStripe',
+        'simplAdmin.paymentPaypalExpress',
+        'simplAdmin.inventory',
+        'simplAdmin.shipment',
+        'simplAdmin.paymentCoD',
+        'simplAdmin.recentlyViewed'
     ]);
 
     toastr.options.closeButton = true;

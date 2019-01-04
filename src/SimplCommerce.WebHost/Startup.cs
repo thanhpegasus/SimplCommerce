@@ -1,114 +1,127 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.Text.Encodings.Web;
+using System.Text.Unicode;
+using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Razor;
+using Microsoft.AspNetCore.Mvc.ViewFeatures.Internal;
+using Microsoft.AspNetCore.Razor.TagHelpers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
-using Microsoft.Extensions.Logging;
-using Serilog;
+using Microsoft.Extensions.WebEncoders;
+using Swashbuckle.AspNetCore.Swagger;
 using SimplCommerce.Infrastructure;
+using SimplCommerce.Infrastructure.Data;
+using SimplCommerce.Infrastructure.Modules;
 using SimplCommerce.Infrastructure.Web;
-using SimplCommerce.Module.Core.Extensions;
-using SimplCommerce.Module.Core.Models;
-using SimplCommerce.Module.Localization;
+using SimplCommerce.Module.Core.Data;
+using SimplCommerce.Module.Localization.Extensions;
+using SimplCommerce.Module.Localization.TagHelpers;
 using SimplCommerce.WebHost.Extensions;
-using Microsoft.EntityFrameworkCore;
 
 namespace SimplCommerce.WebHost
 {
     public class Startup
     {
         private readonly IHostingEnvironment _hostingEnvironment;
+        private readonly IConfiguration _configuration;
 
-        private static readonly IList<ModuleInfo> Modules = new List<ModuleInfo>();
-
-        public Startup(IHostingEnvironment env)
+        public Startup(IConfiguration configuration, IHostingEnvironment hostingEnvironment)
         {
-            _hostingEnvironment = env;
-
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(env.ContentRootPath)
-                .AddJsonFile("appsettings.json", true, true)
-                .AddJsonFile($"appsettings.{env.EnvironmentName}.json", true);
-
-            builder.AddEnvironmentVariables();
-            var connectionStringConfig = builder.Build();
-
-            builder.AddEntityFrameworkConfig(options =>
-                    options.UseSqlServer(connectionStringConfig.GetConnectionString("DefaultConnection"))
-           );
-
-            Configuration = builder.Build();
-
-            Log.Logger = new LoggerConfiguration()
-              .WriteTo.RollingFile(Path.Combine(env.ContentRootPath, "logs\\log-{Date}.log"))
-              .CreateLogger();
+            _configuration = configuration;
+            _hostingEnvironment = hostingEnvironment;
         }
 
-        private IConfigurationRoot Configuration { get; }
-
-        public IServiceProvider ConfigureServices(IServiceCollection services)
+        public void ConfigureServices(IServiceCollection services)
         {
             GlobalConfiguration.WebRootPath = _hostingEnvironment.WebRootPath;
             GlobalConfiguration.ContentRootPath = _hostingEnvironment.ContentRootPath;
-            services.LoadInstalledModules(Modules, _hostingEnvironment);
+            services.AddModules(_hostingEnvironment.ContentRootPath);
 
-            services.AddCustomizedDataStore(Configuration);
-            services.AddCustomizedIdentity();
+            services.Configure<CookiePolicyOptions>(options =>
+            {
+                // This lambda determines whether user consent for non-essential cookies is needed for a given request.
+                options.CheckConsentNeeded = context => true;
+                options.MinimumSameSitePolicy = SameSiteMode.None;
+            });
 
-            services.AddSingleton<IStringLocalizerFactory, EfStringLocalizerFactory>();
-            services.AddSingleton<IConfiguration>(Configuration);
-            services.AddSingleton<IConfigurationRoot>(Configuration);
-            services.AddScoped<SignInManager<User>, SimplSignInManager<User>>();
-            services.AddCloudscribePagination();
+            services.AddCustomizedDataStore(_configuration);
+            services.AddCustomizedIdentity(_configuration);
+            services.AddHttpClient();
+            services.AddTransient(typeof(IRepository<>), typeof(Repository<>));
+            services.AddTransient(typeof(IRepositoryWithTypedId<,>), typeof(RepositoryWithTypedId<,>));
 
-            services.Configure<RazorViewEngineOptions>(
-                options => { options.ViewLocationExpanders.Add(new ModuleViewLocationExpander()); });
+            services.AddCustomizedLocalization();
 
             services.AddCustomizedMvc(GlobalConfiguration.Modules);
+            services.Configure<RazorViewEngineOptions>(
+                options => { options.ViewLocationExpanders.Add(new ThemeableViewLocationExpander()); });
+            services.Configure<WebEncoderOptions>(options =>
+            {
+                options.TextEncoderSettings = new TextEncoderSettings(UnicodeRanges.All);
+            });
+            services.AddScoped<ITagHelperComponent, LanguageDirectionTagHelperComponent>();
+            services.AddTransient<IRazorViewRenderer, RazorViewRenderer>();
+            services.AddAntiforgery(options => options.HeaderName = "X-XSRF-Token");
+            services.AddSingleton<AutoValidateAntiforgeryTokenAuthorizationFilter, CookieOnlyAutoValidateAntiforgeryTokenAuthorizationFilter>();
+            services.AddCloudscribePagination();
 
-            return services.Build(Configuration, _hostingEnvironment);
+            var sp = services.BuildServiceProvider();
+            var moduleInitializers = sp.GetServices<IModuleInitializer>();
+            foreach (var moduleInitializer in moduleInitializers)
+            {
+                moduleInitializer.ConfigureServices(services);
+            }
+
+            services.AddScoped<ServiceFactory>(p => p.GetService);
+            services.AddScoped<IMediator, Mediator>();
+
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new Info { Title = "SimplCommerce API", Version = "v1" });
+            });
         }
 
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
             if (env.IsDevelopment())
             {
-                loggerFactory.WithFilter(new FilterLoggerSettings
-                {
-                    { "Microsoft", LogLevel.Warning },
-                    { "System", LogLevel.Warning },
-                    { "SimplCommerce", LogLevel.Debug }
-                })
-                .AddConsole()
-                .AddSerilog();
-
                 app.UseDeveloperExceptionPage();
                 app.UseDatabaseErrorPage();
             }
             else
             {
-                loggerFactory.WithFilter(new FilterLoggerSettings
-                {
-                    { "Microsoft", LogLevel.Warning },
-                    { "System", LogLevel.Warning },
-                    { "SimplCommerce", LogLevel.Error }
-                })
-                .AddSerilog();
-
-                app.UseExceptionHandler("/Home/Error");
+                app.UseWhen(
+                    context => !context.Request.Path.StartsWithSegments("/api"),
+                    a => a.UseExceptionHandler("/Home/Error")
+                );
+                app.UseHsts();
             }
 
-            app.UseStatusCodePagesWithReExecute("/Home/ErrorWithCode/{0}");
+            app.UseWhen(
+                context => !context.Request.Path.StartsWithSegments("/api"),
+                a => a.UseStatusCodePagesWithReExecute("/Home/ErrorWithCode/{0}")
+            );
 
-            app.UseCustomizedRequestLocalization();
+            app.UseHttpsRedirection();
             app.UseCustomizedStaticFiles(env);
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "SimplCommerce API V1");
+            });
+
+            app.UseCookiePolicy();
             app.UseCustomizedIdentity();
+            app.UseCustomizedRequestLocalization();
             app.UseCustomizedMvc();
+
+            var moduleInitializers = app.ApplicationServices.GetServices<IModuleInitializer>();
+            foreach (var moduleInitializer in moduleInitializers)
+            {
+                moduleInitializer.Configure(app, env);
+            }
         }
     }
 }

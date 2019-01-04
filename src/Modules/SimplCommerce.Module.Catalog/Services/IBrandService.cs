@@ -1,15 +1,16 @@
-﻿using SimplCommerce.Module.Catalog.Models;
+﻿using System.Threading.Tasks;
+using SimplCommerce.Module.Catalog.Models;
 
 namespace SimplCommerce.Module.Catalog.Services
 {
     public interface IBrandService
     {
-        void Create(Brand brand);
+        Task Create(Brand brand);
 
-        void Update(Brand brand);
+        Task Update(Brand brand);
 
-        void Delete(long id);
+        Task Delete(long id);
 
-        void Delete(Brand brand);
+        Task Delete(Brand brand);
     }
 }

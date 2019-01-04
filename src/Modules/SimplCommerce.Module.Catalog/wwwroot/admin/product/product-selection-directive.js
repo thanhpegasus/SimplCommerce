@@ -11,7 +11,8 @@
             scope: {
                 selectedProducts: '=selectedProducts',
                 modelId: '@modelId',
-                title: '@title'
+                title: '@title',
+                isVisibleIndividually: '@isVisibleIndividually'
             },
             controller: ProductSelectionCtrl,
             controllerAs: 'vm',
@@ -31,7 +32,7 @@
             tableStateRef = tableState;
             tableStateRef.search = tableStateRef.search || {};
             tableStateRef.search.predicateObject = tableStateRef.search.predicateObject || {};
-            tableStateRef.search.predicateObject.IsVisibleIndividually = "true";
+            tableStateRef.search.predicateObject.IsVisibleIndividually = vm.isVisibleIndividually;
             tableStateRef.search.predicateObject.IsPublished = "true";
             vm.isLoading = true;
             productService.getProducts(tableState).then(function (result) {
@@ -44,20 +45,20 @@
         vm.checkSelected = function checkSelected(product) {
             var selected = vm.selectedProducts.find(function (item) { return item.id === product.id; });
             if (selected) {
-                return true
+                return true;
             }
 
             return false;
-        }
+        };
 
         vm.toggleSelectedProducts = function toggleSelectedProducts(product) {
             var selectedProductIds, index;
-            selectedProductIds = vm.selectedProducts.map(function (item) { return item.id });
+            selectedProductIds = vm.selectedProducts.map(function (item) { return item.id; });
             index = selectedProductIds.indexOf(product.id);
             if (index > -1) {
                 vm.selectedProducts.splice(index, 1);
             } else {
-                vm.selectedProducts.push({ id: product.id, name: product.name });
+                vm.selectedProducts.push({ id: product.id, name: product.name, isPublished: product.isPublished });
             }
         };
     }

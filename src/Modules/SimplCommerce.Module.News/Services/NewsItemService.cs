@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using System.Threading.Tasks;
 using SimplCommerce.Module.News.Models;
 using SimplCommerce.Infrastructure.Data;
 using SimplCommerce.Module.Core.Services;
@@ -7,7 +8,7 @@ namespace SimplCommerce.Module.News.Services
 {
     public class NewsItemService : INewsItemService
     {
-        private const long NewsItemEntityTypeId = 7;
+        private const string NewsItemEntityTypeId = "NewsItem";
 
         private readonly IRepository<NewsItem> _newsItemRepository;
         private readonly IEntityService _entityService;
@@ -24,41 +25,41 @@ namespace SimplCommerce.Module.News.Services
             {
                 using (var transaction = _newsItemRepository.BeginTransaction())
                 {
-                    newsItem.SeoTitle = _entityService.ToSafeSlug(newsItem.SeoTitle, newsItem.Id, NewsItemEntityTypeId);
+                    newsItem.Slug = _entityService.ToSafeSlug(newsItem.Slug, newsItem.Id, NewsItemEntityTypeId);
                     _newsItemRepository.Add(newsItem);
-                    _newsItemRepository.SaveChange();
+                    _newsItemRepository.SaveChanges();
 
-                    _entityService.Add(newsItem.Name, newsItem.SeoTitle, newsItem.Id, NewsItemEntityTypeId);
-                    _newsItemRepository.SaveChange();
+                    _entityService.Add(newsItem.Name, newsItem.Slug, newsItem.Id, NewsItemEntityTypeId);
+                    _newsItemRepository.SaveChanges();
 
                     transaction.Commit();
                 }
             }
         }
 
-        public void Delete(long id)
+        public void Update(NewsItem newsItem)
         {
-            var newsItem = _newsItemRepository.Query().First(x => x.Id == id);
-            Delete(newsItem);
+            if (newsItem != null)
+            {
+                newsItem.Slug = _entityService.ToSafeSlug(newsItem.Slug, newsItem.Id, NewsItemEntityTypeId);
+                _entityService.Update(newsItem.Name, newsItem.Slug, newsItem.Id, NewsItemEntityTypeId);
+                _newsItemRepository.SaveChanges();
+            }
         }
 
-        public void Delete(NewsItem newsItem)
+        public async Task Delete(long id)
+        {
+            var newsItem = _newsItemRepository.Query().First(x => x.Id == id);
+            await Delete(newsItem);
+        }
+
+        public async Task Delete(NewsItem newsItem)
         {
             if (newsItem != null)
             {
                 newsItem.IsDeleted = true;
-                _entityService.Remove(newsItem.Id, NewsItemEntityTypeId);
-                _newsItemRepository.SaveChange();
-            }
-        }
-
-        public void Update(NewsItem newsItem)
-        {
-            if( newsItem != null)
-            {
-                newsItem.SeoTitle = _entityService.ToSafeSlug(newsItem.SeoTitle, newsItem.Id, NewsItemEntityTypeId);
-                _entityService.Update(newsItem.Name, newsItem.SeoTitle, newsItem.Id, NewsItemEntityTypeId);
-                _newsItemRepository.SaveChange();
+                await _entityService.Remove(newsItem.Id, NewsItemEntityTypeId);
+                _newsItemRepository.SaveChanges();
             }
         }
     }

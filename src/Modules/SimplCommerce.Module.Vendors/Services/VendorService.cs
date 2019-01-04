@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using System.Threading.Tasks;
 using SimplCommerce.Infrastructure.Data;
 using SimplCommerce.Module.Core.Models;
 using SimplCommerce.Module.Core.Services;
@@ -7,7 +8,7 @@ namespace SimplCommerce.Module.Vendors.Services
 {
     public class VendorService : IVendorService
     {
-        private const long VendorEntityTypeId = 2;
+        private const string VendorEntityTypeId = "Vendor";
 
         private readonly IRepository<Vendor> _vendorRepository;
         private readonly IEntityService _entityService;
@@ -18,39 +19,39 @@ namespace SimplCommerce.Module.Vendors.Services
             _entityService = entityService;
         }
 
-        public void Create(Vendor vendor)
+        public async Task Create(Vendor vendor)
         {
             using (var transaction = _vendorRepository.BeginTransaction())
             {
-                vendor.SeoTitle = _entityService.ToSafeSlug(vendor.SeoTitle, vendor.Id, VendorEntityTypeId);
+                vendor.Slug = _entityService.ToSafeSlug(vendor.Slug, vendor.Id, VendorEntityTypeId);
                 _vendorRepository.Add(vendor);
-                _vendorRepository.SaveChange();
+                await _vendorRepository.SaveChangesAsync();
 
-                _entityService.Add(vendor.Name, vendor.SeoTitle, vendor.Id, VendorEntityTypeId);
-                _vendorRepository.SaveChange();
+                _entityService.Add(vendor.Name, vendor.Slug, vendor.Id, VendorEntityTypeId);
+                await _vendorRepository.SaveChangesAsync();
 
                 transaction.Commit();
             }
         }
 
-        public void Update(Vendor vendor)
+        public async Task Update(Vendor vendor)
         {
-            vendor.SeoTitle = _entityService.ToSafeSlug(vendor.SeoTitle, vendor.Id, VendorEntityTypeId);
-            _entityService.Update(vendor.Name, vendor.SeoTitle, vendor.Id, VendorEntityTypeId);
-            _vendorRepository.SaveChange();
+            vendor.Slug = _entityService.ToSafeSlug(vendor.Slug, vendor.Id, VendorEntityTypeId);
+            _entityService.Update(vendor.Name, vendor.Slug, vendor.Id, VendorEntityTypeId);
+            await _vendorRepository.SaveChangesAsync();
         }
 
-        public void Delete(long id)
+        public async Task Delete(long id)
         {
             var vendor = _vendorRepository.Query().First(x => x.Id == id);
-            Delete(vendor);
+            await Delete(vendor);
         }
 
-        public void Delete(Vendor vendor)
+        public async Task Delete(Vendor vendor)
         {
             vendor.IsDeleted = true;
-            _entityService.Remove(vendor.Id, VendorEntityTypeId);
-            _vendorRepository.SaveChange();
+            await _entityService.Remove(vendor.Id, VendorEntityTypeId);
+            _vendorRepository.SaveChanges();
         }
     }
 }

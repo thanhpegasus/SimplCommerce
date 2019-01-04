@@ -1,6 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata;
 using SimplCommerce.Infrastructure.Data;
 using SimplCommerce.Module.Core.Models;
 
@@ -10,6 +9,8 @@ namespace SimplCommerce.Module.Core.Data
     {
         public void Build(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<AppSetting>().ToTable("Core_AppSetting");
+
             modelBuilder.Entity<User>()
                 .ToTable("Core_User");
 
@@ -31,8 +32,8 @@ namespace SimplCommerce.Module.Core.Data
             modelBuilder.Entity<UserRole>(b =>
             {
                 b.HasKey(ur => new { ur.UserId, ur.RoleId });
-                b.HasOne(ur => ur.Role).WithMany(r => r.Users).HasForeignKey(r => r.RoleId);
-                b.HasOne(ur => ur.User).WithMany(u => u.Roles).HasForeignKey(u => u.UserId);
+                b.HasOne(ur => ur.Role).WithMany(x => x.Users).HasForeignKey(r => r.RoleId);
+                b.HasOne(ur => ur.User).WithMany(x => x.Roles).HasForeignKey(u => u.UserId);
                 b.ToTable("Core_UserRole");
             });
 
@@ -55,17 +56,14 @@ namespace SimplCommerce.Module.Core.Data
             modelBuilder.Entity<User>(u =>
             {
                 u.HasOne(x => x.DefaultShippingAddress)
-               .WithMany()
-               .HasForeignKey(x => x.DefaultShippingAddressId)
-               .OnDelete(DeleteBehavior.Restrict);
-            });
+                   .WithMany()
+                   .HasForeignKey(x => x.DefaultShippingAddressId)
+                   .OnDelete(DeleteBehavior.Restrict);
 
-            modelBuilder.Entity<User>(u =>
-            {
                 u.HasOne(x => x.DefaultBillingAddress)
-               .WithMany()
-               .HasForeignKey(x => x.DefaultBillingAddressId)
-               .OnDelete(DeleteBehavior.Restrict);
+                    .WithMany()
+                    .HasForeignKey(x => x.DefaultBillingAddressId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<UserAddress>()
@@ -88,6 +86,20 @@ namespace SimplCommerce.Module.Core.Data
                     .WithMany()
                     .OnDelete(DeleteBehavior.Restrict);
             });
+
+            modelBuilder.Entity<CustomerGroup>()
+                .HasIndex(d => d.Name)
+                .IsUnique();
+
+            modelBuilder.Entity<CustomerGroupUser>(b =>
+            {
+                b.HasKey(ur => new { ur.UserId, ur.CustomerGroupId });
+                b.HasOne(ur => ur.User).WithMany(r => r.CustomerGroups).HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
+                b.HasOne(ur => ur.CustomerGroup).WithMany(u => u.Users).HasForeignKey(u => u.CustomerGroupId).OnDelete(DeleteBehavior.Cascade);
+                b.ToTable("Core_CustomerGroupUser");
+            });
+
+            CoreSeedData.SeedData(modelBuilder);
         }
     }
 }

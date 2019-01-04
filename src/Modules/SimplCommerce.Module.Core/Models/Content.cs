@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations;
 using SimplCommerce.Infrastructure.Models;
 
 namespace SimplCommerce.Module.Core.Models
@@ -10,12 +11,16 @@ namespace SimplCommerce.Module.Core.Models
         protected Content()
         {
             CreatedOn = DateTimeOffset.Now;
-            UpdatedOn = DateTimeOffset.Now;
+            LatestUpdatedOn = DateTimeOffset.Now;
         }
 
+        [Required]
+        [StringLength(450)]
         public string Name { get; set; }
 
-        public string SeoTitle { get; set; }
+        [Required]
+        [StringLength(450)]
+        public string Slug { get; set; }
 
         public string MetaTitle { get; set; }
 
@@ -44,12 +49,16 @@ namespace SimplCommerce.Module.Core.Models
             }
         }
 
-        public virtual User CreatedBy { get; set; }
+        public long CreatedById { get; set; }
+
+        public User CreatedBy { get; set; }
 
         public DateTimeOffset CreatedOn { get; set; }
 
-        public DateTimeOffset UpdatedOn { get; set; }
+        public DateTimeOffset LatestUpdatedOn { get; set; }
 
-        public virtual User UpdatedBy { get; set; }
+        public long LatestUpdatedById { get; set; }
+
+        public User LatestUpdatedBy { get; set; }
     }
 }
